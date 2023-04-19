@@ -241,7 +241,7 @@ class game:
         if self.whose_turn() == COMPUTER:
             self.who = self.turn
             self.score, self.cost_time, self.last_action, self.length, self.cnt = \
-                self.board.alpha_beta(self.max_depth, self.turn, False)
+                self.board.alpha_beta(self.max_depth, self.turn, True)
             from_x, from_y = self.last_action.from_pos[0], self.last_action.from_pos[1]
             to_x, to_y = self.last_action.to_pos[0], self.last_action.to_pos[1]
             to_chess = self.board.move_to([from_x, from_y], [to_x, to_y])
