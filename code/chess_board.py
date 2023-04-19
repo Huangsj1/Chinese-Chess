@@ -2,6 +2,8 @@ import time
 import chess_const as cc
 import history_heuristic as hh
 import chess_relation as cr
+import repeat as rp
+import zobrist_code as zc
 
 # chess结构
 class chess:
@@ -34,6 +36,10 @@ class chess_board:
         self.board = board
         # 历史启发表
         self.history_table = hh.history_table()
+        # 记录初始棋盘的zobrist
+        self.zobrist = zc.Zobrist()
+        self.zobrist.initialize()
+        self.zval = self.zobrist.init_value(self.board)
 
     def print_board(self):
         print("=" * 120)
@@ -63,57 +69,54 @@ class chess_board:
                         return False
             return True
 
-    # 普通深度受限alpha_beta算法(求who一方的最大得分和action)
+    # # 普通深度受限alpha_beta算法(求who一方的最大得分和action)
     # # 叶子节点求的全都是who一方的得分，Max最大化who的得分，Min最小化who的得分
-    def alpha_beta(self, max_depth, who, show_time=True):
+    # def alpha_beta(self, max_depth, who, show_time=True):
+    #     start_time = time.time()
+    #     # 用来计算每一层搜索的数量(传入参数cnt)
+    #     cnt = [0 for _ in range(max_depth)]
+    #     length = [0 for _ in range(max_depth)]
+    #     score, best_action = self.Max_Value(cc.MIN_VAL, cc.MAX_VAL, 1, max_depth, who, cnt, length)
+    #     cost_time = time.time() - start_time
+    #     if show_time:
+    #         print("-" * 50)
+    #         print("共搜索了 %f s" % (cost_time))
+    #         for i in range(1, max_depth):
+    #             print("第 %d 层共有了 %d 个节点" % (i + 1, length[i]))
+    #         print('-' * 50)
+    #         print("-" * 50)
+    #         for i in range(1, max_depth):
+    #             print("第 %d 层搜索了 %d 个节点" % (i + 1, cnt[i]))
+    #         print('-' * 50)
+    #     #
+    #     return score, cost_time, best_action, length, cnt
+    
+    # 迭代加深的alpha-beta算法
+    # # 叶子节点求的全都是who一方的得分，Max最大化who的得分，Min最小化who的得分
+    # def alpha_beta(self, max_depth, who):
+    def alpha_beta(self, max_depth, who, show_time=True, repeat_queue: rp.RepeatQueue=None):
         start_time = time.time()
-        # 用来计算每一层搜索的数量(传入参数cnt)
-        cnt = [0 for _ in range(max_depth)]
-        length = [0 for _ in range(max_depth)]
-        score, best_action = self.Max_Value(cc.MIN_VAL, cc.MAX_VAL, 1, max_depth, who, cnt, length)
-        cost_time = time.time() - start_time
+        max_time, cost_time = cc.MAX_TIME, 0
+        for mdepth in range(2, max_depth + 1):
+            cnt = [0 for _ in range(mdepth)]
+            length = [0 for _ in range(mdepth)]
+            score, best_action = self.Max_Value(cc.MIN_VAL, cc.MAX_VAL, 1, mdepth, who, cnt, length, repeat_queue)
+            cost_time = time.time() - start_time
+            if cost_time > max_time:
+                break
         if show_time:
-            print("-" * 50)
-            print("共搜索了 %f s" % (cost_time))
-            for i in range(1, max_depth):
-                print("第 %d 层共有了 %d 个节点" % (i + 1, length[i]))
             print('-' * 50)
+            print("深度为 %d 搜索了 %f s" % (mdepth, cost_time))
+            for i in range(1, mdepth):
+                print("第 %d 层共有 %d 个节点" % (i + 1, length[i]))
             print("-" * 50)
-            for i in range(1, max_depth):
+            for i in range(1, mdepth):
                 print("第 %d 层搜索了 %d 个节点" % (i + 1, cnt[i]))
             print('-' * 50)
-        #
         return score, cost_time, best_action, length, cnt
     
-    # # 迭代加深的alpha-beta算法
-    # # # 叶子节点求的全都是who一方的得分，Max最大化who的得分，Min最小化who的得分
-    # # def alpha_beta(self, max_depth, who):
-    # def alpha_beta(self, max_depth, who):
-    #     max_depth = max_depth + 5
-    #     start_time = time.time()
-    #     max_time, cost_time = 0.1, 0
-    #     for mdepth in range(2, max_depth):
-    #         cnt = [0 for _ in range(mdepth)]
-    #         length = [0 for _ in range(mdepth)]
-    #         #
-    #         score, best_action = self.Max_Value(cc.MIN_VAL, cc.MAX_VAL, 1, mdepth, who, cnt, length)
-    #         #
-    #         cost_time = time.time() - start_time
-    #         if cost_time > max_time:
-    #             break
-    #         #
-    #     print('-' * 50)
-    #     print("深度为 %d 搜索了 %f s" % (mdepth, cost_time))
-    #     for i in range(1, mdepth):
-    #         print("第 %d 层共有 %d 个节点" % (i, length[i]))
-    #     print("-" * 50)
-    #     for i in range(1, mdepth):
-    #         print("第 %d 层搜索了 %d 个节点" % (i, cnt[i]))
-    #     print('-' * 50)
-    #     return score, best_action
-    
     # Max_Value算法(α)（who为当前行动的颜色）
-    def Max_Value(self, alpha, beta, depth, max_depth, who, cnt: list, length: list):
+    def Max_Value(self, alpha, beta, depth, max_depth, who, cnt: list, length: list, repeat_queue: rp.RepeatQueue=None):
         # 敌方吃掉了帅
         if self.win(cc.BLACK if who == cc.RED else cc.RED):
             return cc.MIN_VAL + depth, None             # 这里+depth是一个优化，使得可以赢的时候，选择深度浅的
@@ -130,10 +133,21 @@ class chess_board:
         length[depth] = length[depth] + len(all_actions)
         for step in all_actions:
             cnt[depth] = cnt[depth] + 1
-            # 移动self.board中的chess，后面再改回来
-            to_chess = self.move_to(step.from_pos, step.to_pos)
-            score, _ = self.Min_Value(alpha, beta, depth + 1, max_depth, cc.BLACK if who == cc.RED else cc.RED, cnt, length)
-            self.move_to(step.to_pos, step.from_pos, to_chess)
+            # 移动之前检查是否出现过该局面,若出现过,返回最小得分
+            next_val = self.zobrist.next_value(self.zval, step.from_pos[0], step.from_pos[1], step.to_pos[0], step.to_pos[1], \
+                                               self.board[step.from_pos[0]][step.from_pos[1]], self.board[step.to_pos[0]][step.to_pos[1]])
+            if repeat_queue != None and repeat_queue.has_repeat(next_val):
+                score = cc.MIN_VAL + 1
+            else:
+                #因为要移动,所以此时board变了,则zval也要变
+                pre_zval = self.zval
+                self.zval = next_val
+                # 移动self.board中的chess，后面再改回来
+                to_chess = self.move_to(step.from_pos, step.to_pos)
+                score, _ = self.Min_Value(alpha, beta, depth + 1, max_depth, cc.BLACK if who == cc.RED else cc.RED, cnt, length)
+                self.move_to(step.to_pos, step.from_pos, to_chess)
+                # 移动回来,zval也要变回来
+                self.zval = pre_zval
             # 如果估计值更大：
             if score > v:
                 v = score
@@ -147,7 +161,7 @@ class chess_board:
         return v, best_action
     
     # Min_Value算法(β)（who为当前行动的颜色）
-    def Min_Value(self, alpha, beta, depth, max_depth, who, cnt: list, length: list):
+    def Min_Value(self, alpha, beta, depth, max_depth, who, cnt: list, length: list, repeat_queue: rp.RepeatQueue=None):
         # 如果经过了Max(己方走完)后己方已经获胜，那么直接返回最大效益值
         if self.win(cc.BLACK if who == cc.RED else cc.RED):
             return cc.MAX_VAL - depth, None         # 这里-depth是一个优化，使得可以赢的时候，选择深度浅的
@@ -163,10 +177,21 @@ class chess_board:
         length[depth] = length[depth] + len(all_actions)
         for step in all_actions:
             cnt[depth] = cnt[depth] + 1
-            # 移动self.board中的chess，后面再改回来
-            to_chess = self.move_to(step.from_pos, step.to_pos)
-            score, _ = self.Max_Value(alpha, beta, depth + 1, max_depth, cc.BLACK if who == cc.RED else cc.RED, cnt, length)
-            self.move_to(step.to_pos, step.from_pos, to_chess)
+            # 移动之前检查是否出现过该局面,若出现过,返回最小得分
+            next_val = self.zobrist.next_value(self.zval, step.from_pos[0], step.from_pos[1], step.to_pos[0], step.to_pos[1], \
+                                               self.board[step.from_pos[0]][step.from_pos[1]], self.board[step.to_pos[0]][step.to_pos[1]])
+            if repeat_queue != None and repeat_queue.has_repeat(next_val):
+                score = cc.MAX_VAL - 1
+            else:
+                #因为要移动,所以此时board变了,则zval也要变
+                pre_zval = self.zval
+                self.zval = next_val
+                # 移动self.board中的chess，后面再改回来
+                to_chess = self.move_to(step.from_pos, step.to_pos)
+                score, _ = self.Max_Value(alpha, beta, depth + 1, max_depth, cc.BLACK if who == cc.RED else cc.RED, cnt, length)
+                self.move_to(step.to_pos, step.from_pos, to_chess)
+                # 移动回来,zval也要变回来
+                self.zval = pre_zval
             # 如果估计值更小：
             if score < v:
                 v = score

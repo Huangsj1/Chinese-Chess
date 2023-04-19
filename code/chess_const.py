@@ -12,7 +12,14 @@ MAX_VAL = 9999999
 MIN_VAL = -9999999
 
 # alpha_beta的最大深度(搜索的层数是MAX_DEPTH-1)
-MAX_DEPTH = 4
+# MAX_DEPTH = 4
+
+# IDA迭代加深的alpha-beta (局面越好,速度越快)
+# 搜索深度由MAX_DEPTH和MAX_TIME共同决定
+MAX_DEPTH_EASY = 2
+MAX_DEPTH_MIDDLE = 3
+MAX_DEPTH_HARD = 6      # 最多搜6层,由时间决定深度
+MAX_TIME = 0.3      # 倒数第二层的时间不能超过该时间,否则最后一层会过长
 
 # 棋子类型
 NULL = 0
@@ -35,16 +42,16 @@ COLOR_MAP = {0: "B", 1: "R"}
 
 # 初始时棋盘
 # init_board = [
-#     [CHE, MA, XIANG, NULL, KING, SHI, XIANG, MA, CHE],
-#     [NULL, NULL, NULL, NULL, SHI, NULL, NULL, NULL, NULL],
-#     [NULL, PAO, NULL, NULL, NULL, NULL, NULL, NULL, NULL],
-#     [NULL, NULL, ZU, NULL, ZU, NULL, ZU, NULL, ZU],
-#     [ZU, NULL, NULL, NULL, PAO, NULL, NULL, NULL, NULL],
-#     [NULL, NULL, NULL, NULL, NULL, NULL, ZU, NULL, ZU],
-#     [ZU, NULL, ZU, NULL, ZU, NULL, NULL, NULL, NULL],
-#     [PAO, NULL, NULL, NULL, XIANG, NULL, MA, NULL, PAO],
+#     [NULL, NULL, NULL, NULL, KING, NULL, NULL, NULL, NULL],
+#     [NULL, NULL, NULL, CHE, NULL, NULL, NULL, NULL, NULL],
 #     [NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL],
-#     [CHE, MA, XIANG, SHI, KING, SHI, NULL, NULL, CHE],
+#     [NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL],
+#     [NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL],
+#     [NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL],
+#     [CHE, NULL, NULL, NULL, NULL, NULL, ZU, NULL, ZU],
+#     [NULL, NULL, NULL, NULL, NULL, NULL, MA, NULL, PAO],
+#     [NULL, NULL, NULL, NULL, SHI, NULL, NULL, NULL, NULL],
+#     [NULL, NULL, NULL, NULL, KING, SHI, NULL, NULL, NULL],
 # ]
 init_board = [
     [CHE, MA, XIANG, SHI, KING, SHI, XIANG, MA, CHE],

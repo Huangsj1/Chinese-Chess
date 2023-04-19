@@ -78,7 +78,7 @@ class ImageShow:
         self.red_turn = button.Text('红方', button.Color.RED, font_name, 50)
 
         # 电脑计算的信息背景框
-        self.compute_info_bg = button.ColorSurface(button.Color.MY_QING, 186, 200)
+        self.compute_info_bg = button.ColorSurface(button.Color.MY_QING, 186, 250)
         self.compute_info = button.Text('电脑计算信息', button.Color.BLACK, font_name, 12)
 
         # 悔棋边框
@@ -155,16 +155,16 @@ class ImageShow:
     # 显示轮到哪一方走
     def show_who_turn(self, turn):
         if turn == cc.BLACK:
-            self.black_turn.draw(self.screen, bg_size[0] - 100, 180)
+            self.black_turn.draw(self.screen, bg_size[0] - 100, 160)
         elif turn == cc.RED:
-            self.red_turn.draw(self.screen, bg_size[0] - 100, bg_size[1] - 200)
+            self.red_turn.draw(self.screen, bg_size[0] - 100, bg_size[1] - 190)
 
     # 显示电脑行动(哪一方)的得分
     def show_score(self, who, action: cb.action, length: list, cnt: list, time: float, score: int):
         # 绘制背景框
         self.compute_info_bg.draw(self.screen, bg_size[0] - 100, 350)
         # 绘制所有内容
-        start_pos = (bg_size[0] - 100, 270)
+        start_pos = (bg_size[0] - 100, 240)
         dy = 16
         self.compute_info.change_text("电脑(%s)的步骤: (%d, %d)->(%d, %d)" % \
                                       (cc.COLOR_MAP[who], action.from_pos[0], action.from_pos[1], action.to_pos[0], action.to_pos[1]))
@@ -187,28 +187,28 @@ class ImageShow:
     # 显示悔棋按钮
     def show_back(self, black=False, red=False):
         if black:
-            self.button_back_bg.draw(self.screen, bg_size[0] - 100, 130)
-            self.button_back_black.draw(self.screen, bg_size[0] - 100, 130)
+            self.button_back_bg.draw(self.screen, bg_size[0] - 100, 110)
+            self.button_back_black.draw(self.screen, bg_size[0] - 100, 110)
         if red:
-            self.button_back_bg.draw(self.screen, bg_size[0] - 100, bg_size[1] - 150)
-            self.button_back_red.draw(self.screen, bg_size[0] - 100, bg_size[1] - 150)
+            self.button_back_bg.draw(self.screen, bg_size[0] - 100, bg_size[1] - 140)
+            self.button_back_red.draw(self.screen, bg_size[0] - 100, bg_size[1] - 140)
         
     # 显示托管(people是否是玩家,black/red是否是托管中)
     def show_host(self, people_black=False, people_red=False, black_host=False, red_host=False):
         if people_black:
             if black_host:
-                self.button_unhost_bg.draw(self.screen, bg_size[0] - 100, 90)
-                self.button_unhost_black.draw(self.screen, bg_size[0] - 100, 90)
+                self.button_unhost_bg.draw(self.screen, bg_size[0] - 100, 70)
+                self.button_unhost_black.draw(self.screen, bg_size[0] - 100, 70)
             else:
-                self.button_host_bg.draw(self.screen, bg_size[0] - 100, 90)
-                self.button_host_black.draw(self.screen, bg_size[0] - 100, 90)
+                self.button_host_bg.draw(self.screen, bg_size[0] - 100, 70)
+                self.button_host_black.draw(self.screen, bg_size[0] - 100, 70)
         if people_red:
             if red_host:
-                self.button_unhost_bg.draw(self.screen, bg_size[0] - 100, bg_size[1] - 110)
-                self.button_unhost_red.draw(self.screen, bg_size[0] - 100, bg_size[1] - 110)
+                self.button_unhost_bg.draw(self.screen, bg_size[0] - 100, bg_size[1] - 100)
+                self.button_unhost_red.draw(self.screen, bg_size[0] - 100, bg_size[1] - 100)
             else:
-                self.button_host_bg.draw(self.screen, bg_size[0] - 100, bg_size[1] - 110)
-                self.button_host_red.draw(self.screen, bg_size[0] - 100, bg_size[1] - 110)
+                self.button_host_bg.draw(self.screen, bg_size[0] - 100, bg_size[1] - 100)
+                self.button_host_red.draw(self.screen, bg_size[0] - 100, bg_size[1] - 100)
             
         
     # 显示胜利
@@ -239,7 +239,11 @@ if __name__ == "__main__":
         
         show_image.show_chess(cb.chess_board(cb.init_board()).board)
 
-        time.sleep(0.1)
+        show_image.show_back(True, True)
+        show_image.show_score(cc.BLACK, cb.action((1, 2), (3, 4)), [1,2,3,4,5], [9,8,7,6,5], 1.6, 6)
+        show_image.show_host(True, True, True, True)
+        show_image.show_who_turn(cc.BLACK)
+        show_image.show_who_turn(cc.RED)
 
         # 显示这个screen的内容
         pygame.display.update()

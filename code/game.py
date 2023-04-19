@@ -4,6 +4,8 @@ import time
 import chess_const as cc
 from chess_board import *
 import show
+import repeat as rp
+import zobrist_code as zc
 
 COMPUTER = 0
 PEOPLE = 1
@@ -13,7 +15,7 @@ class game:
     def __init__(self):
         # board是一个chess_board类型
         self.board: chess_board = chess_board(init_board())
-        self.max_depth = cc.MAX_DEPTH
+        self.max_depth = cc.MAX_DEPTH_HARD
         # 用来展示图片的对象
         self.show_image: show.ImageShow = None
 
@@ -56,6 +58,10 @@ class game:
         self.p2_last_action = None
         self.p2_last_chess = None
 
+        # 记录最近走的棋局,防止电脑一直走相同的步骤
+        self.red_queue = rp.RepeatQueue()
+        self.black_queue = rp.RepeatQueue()
+
     # 初始化pygame
     def initialize(self):
         pygame.init()
@@ -87,19 +93,19 @@ class game:
     def choose_level1(self):
         print("选择easy")
         self.level = cc.EASY
-        self.max_depth = cc.MAX_DEPTH - 2
+        self.max_depth = cc.MAX_DEPTH_EASY
     
     # 选择中等难度(供按钮使用)
     def choose_level2(self):
         print("选择middle")
         self.level = cc.MIDDLE
-        self.max_depth = cc.MAX_DEPTH - 1
+        self.max_depth = cc.MAX_DEPTH_MIDDLE
 
     # 选择困难难度(供按钮使用)
     def choose_level3(self):
         print("选择hard")
         self.level = cc.HARD
-        self.max_depth = cc.MAX_DEPTH
+        self.max_depth = cc.MAX_DEPTH_HARD
 
     # 选择黑方(供按钮使用)
     def choose_side_black(self):
@@ -121,13 +127,15 @@ class game:
                 to_x, to_y = self.p1_last_action.to_pos[0], self.p1_last_action.to_pos[1]
                 self.board.board[from_x][from_y] = self.board.board[to_x][to_y]
                 self.board.board[to_x][to_y] = self.p1_last_chess
-                self.p1_last_action, self.p1_last_chess = None, None      
+                self.p1_last_action, self.p1_last_chess = None, None     
+                self.board.zval = self.red_queue.pop()        # 弹出上一个棋局 
                 # 再恢复黑色
                 from_x, from_y = self.p2_last_action.from_pos[0], self.p2_last_action.from_pos[1]
                 to_x, to_y = self.p2_last_action.to_pos[0], self.p2_last_action.to_pos[1]
                 self.board.board[from_x][from_y] = self.board.board[to_x][to_y]
                 self.board.board[to_x][to_y] = self.p2_last_chess
                 self.p2_last_action, self.p2_last_chess = None, None
+                self.board.zval = self.black_queue.pop()        # 弹出上一个棋局 
             elif self.turn == cc.RED:      # 如果现在轮到红方走,那么要恢复黑方的上一步,同时转换回黑方走
                 from_x, from_y = self.p2_last_action.from_pos[0], self.p2_last_action.from_pos[1]
                 to_x, to_y = self.p2_last_action.to_pos[0], self.p2_last_action.to_pos[1]
@@ -135,6 +143,7 @@ class game:
                 self.board.board[to_x][to_y] = self.p2_last_chess
                 self.p2_last_action, self.p2_last_chess = None, None
                 self.turn = cc.BLACK    # 转回黑方走
+                self.board.zval = self.black_queue.pop()        # 弹出上一个棋局 
     
     # 红色方想要悔棋(供按钮使用)
     def go_back_red(self):
@@ -145,13 +154,15 @@ class game:
                 to_x, to_y = self.p2_last_action.to_pos[0], self.p2_last_action.to_pos[1]
                 self.board.board[from_x][from_y] = self.board.board[to_x][to_y]
                 self.board.board[to_x][to_y] = self.p2_last_chess
-                self.p2_last_action, self.p2_last_chess = None, None      
+                self.p2_last_action, self.p2_last_chess = None, None     
+                self.board.zval = self.black_queue.pop()        # 弹出上一个棋局  
                 # 再恢复红色
                 from_x, from_y = self.p1_last_action.from_pos[0], self.p1_last_action.from_pos[1]
                 to_x, to_y = self.p1_last_action.to_pos[0], self.p1_last_action.to_pos[1]
                 self.board.board[from_x][from_y] = self.board.board[to_x][to_y]
                 self.board.board[to_x][to_y] = self.p1_last_chess
                 self.p1_last_action, self.p1_last_chess = None, None
+                self.board.zval = self.red_queue.pop()        # 弹出上一个棋局 
             elif self.turn == cc.BLACK:      # 如果现在轮到黑方走,那么要恢复红方的上一步,同时转换回红方走
                 from_x, from_y = self.p1_last_action.from_pos[0], self.p1_last_action.from_pos[1]
                 to_x, to_y = self.p1_last_action.to_pos[0], self.p1_last_action.to_pos[1]
@@ -159,6 +170,7 @@ class game:
                 self.board.board[to_x][to_y] = self.p1_last_chess
                 self.p1_last_action, self.p1_last_chess = None, None
                 self.turn = cc.RED    # 转回红方走
+                self.board.zval = self.red_queue.pop()        # 弹出上一个棋局 
 
     # ------------------------------------托管------------------------------------------------------
     def red_to_computer(self):
@@ -176,6 +188,15 @@ class game:
     def black_to_people(self):
         self.player2 = PEOPLE
         self.host2 = False
+
+    # ----------------------------------记录下一个局面----------------------------------------------
+    def record_next(self, from_x, from_y, to_x, to_y, now_who):
+        self.board.zval = self.board.zobrist.next_value(self.board.zval, from_x, from_y, to_x, to_y, \
+                                            self.board.board[from_x][from_y], self.board.board[to_x][to_y])
+        if now_who == cc.BLACK:
+            self.black_queue.push(self.board.zval)
+        elif now_who == cc.RED:
+            self.red_queue.push(self.board.zval)
 
     # -------------------------------------pygame开始游戏---------------------------------------
     def start_game(self):
@@ -221,10 +242,10 @@ class game:
     # 当双方都为电脑的时候,速度过快,需要延时久一些; 否则就延迟一小会
     def delay(self):
         if self.player1 == COMPUTER and self.player2 == COMPUTER:
-            if self.max_depth == cc.MAX_DEPTH - 2:
-                time.sleep(0.6)
-            elif self.max_depth == cc.MAX_DEPTH - 1:
-                time.sleep(0.4)
+            if self.max_depth == cc.MAX_DEPTH_EASY:
+                time.sleep(0.3)
+            elif self.max_depth == cc.MAX_DEPTH_MIDDLE:
+                time.sleep(0.3)
         time.sleep(0.1)
 
     # 切换行动方
@@ -241,10 +262,12 @@ class game:
         if self.whose_turn() == COMPUTER:
             self.who = self.turn
             self.score, self.cost_time, self.last_action, self.length, self.cnt = \
-                self.board.alpha_beta(self.max_depth, self.turn, True)
+                self.board.alpha_beta(self.max_depth, self.turn, True, self.red_queue if self.turn == cc.RED else self.black_queue)
             from_x, from_y = self.last_action.from_pos[0], self.last_action.from_pos[1]
             to_x, to_y = self.last_action.to_pos[0], self.last_action.to_pos[1]
-            to_chess = self.board.move_to([from_x, from_y], [to_x, to_y])
+            # 在move_to之前先记录新的棋盘的值
+            self.record_next(from_x, from_y, to_x, to_y, self.turn)
+            to_chess = self.board.move_to((from_x, from_y), (to_x, to_y))
             #print("电脑(%s)走的步骤: (%d, %d)->(%d, %d), 得分：%d" % (cc.COLOR_MAP[self.turn], from_x, from_y, to_x, to_y, self.score))
             # 电脑走完，记录走的步骤
             if self.turn == cc.RED:
@@ -310,27 +333,29 @@ class game:
                     if central_pos[0] >= 0 and central_pos[0] <= 8 and central_pos[1] >= 0 and central_pos[1] <= 9 \
                     and abs(mouse_pos[0] - (show.left_top_central_pos[0] + central_pos[0] * show.width)) <= (show.width* 3 / 8) \
                     and abs(mouse_pos[1] - (show.left_top_central_pos[1] + central_pos[1] * show.width)) <= (show.width* 3 / 8):
-                        select_chess = self.board.board[central_pos[1]][central_pos[0]]
+                        # 转换成数组的坐标
+                        central_pos = self.change_pos(central_pos)
+                        select_chess = self.board.board[central_pos[0]][central_pos[1]]
                         # 1&2.点击的是空格/敌方棋子 -> 判断是否已经选择棋子 -> 判断是否可以放下 -> move_to
                         if select_chess.type == cc.NULL or select_chess.who != self.turn:
-                            if self.select and self.board.can_move(self.change_pos(central_pos), self.select_action):
-                                # print("Peopel: (%d, %d)->(%d, %d)" % (self.select_pos[1], self.select_pos[0], central_pos[1], central_pos[0]))
-                                # 注意坐标是相反的
-                                to_chess = self.board.move_to(self.change_pos(self.select_pos), self.change_pos(central_pos))
+                            if self.select and self.board.can_move(central_pos, self.select_action):
+                                # print("Peopel: (%d, %d)->(%d, %d)" % (self.select_pos[0], self.select_pos[1], central_pos[0], central_pos[1]))
+                                to_chess = self.board.move_to(self.select_pos, central_pos)
                                 # 记录走的步骤
                                 if self.turn == cc.RED:
-                                    self.p1_last_action = action(self.change_pos(self.select_pos), self.change_pos(central_pos))
+                                    self.p1_last_action = action(self.select_pos, central_pos)
                                     self.p1_last_chess = to_chess
                                 elif self.turn == cc.BLACK:
-                                    self.p2_last_action = action(self.change_pos(self.select_pos), self.change_pos(central_pos))
+                                    self.p2_last_action = action(self.select_pos, central_pos)
                                     self.p2_last_chess = to_chess
+                                self.record_next(self.select_pos[0], self.select_pos[1], central_pos[0], central_pos[1], self.turn)
                                 self.switch_player()
                             # 如果没选择/选择了但不可以放下 -> 取消选择
                             self.select = False
                         # 3.点击的是己方的棋子 -> 选中该棋子（并且保存可以走的路径）
                         elif select_chess.who == self.turn:
                             self.select, self.select_pos = True, central_pos
-                            self.select_action = self.board.get_chess_action(central_pos[1], central_pos[0], self.turn)
+                            self.select_action = self.board.get_chess_action(central_pos[0], central_pos[1], self.turn)
 
     # 将图像显示坐标改成位置坐标
     def change_pos(self, image_pos: tuple):
